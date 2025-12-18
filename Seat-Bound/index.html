@@ -1,0 +1,3440 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flight Seat Selection</title>
+
+    <!-- Bootstrap 5.3 CDN -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- jQuery CDN -->
+    <script
+      src="https://code.jquery.com/jquery-3.7.1.min.js"
+      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- ECharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+
+    <!-- Font Awesome CDN -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+
+    <style>
+      #seat-map {
+        width: 100%;
+        height: 600px;
+        position: relative;
+      }
+
+      .legend-item {
+        display: inline-block;
+        margin-right: 20px;
+      }
+
+      .legend-color {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+
+      .available-seat {
+        background-color: #fff;
+        border: 1px solid #ccc;
+      }
+
+      .selected-seat {
+        background-color: #4caf50;
+      }
+
+      .reserved-seat {
+        background-color: #bf0e08;
+      }
+
+      .disabled-seat {
+        background-color: #9e9e9e;
+      }
+
+      .inprogress-seat {
+        background-color: orange;
+      }
+
+      .female-seat {
+        background-color: #ff69b4;
+      }
+
+      .form-check-input:checked {
+        background-color: #4caf50;
+        border-color: #4caf50;
+      }
+
+      .control-buttons {
+        position: absolute;
+        top: -10px;
+        right: 0px;
+        z-index: 1000;
+        display: flex;
+        gap: 5px;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 5px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+
+      .control-buttons button {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .control-buttons #toggle-pan {
+        width: auto;
+      }
+
+      .spinner-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1001;
+      }
+
+      .spinner-text {
+        margin-top: 10px;
+        font-weight: bold;
+      }
+
+      .map-selection {
+        margin-bottom: 15px;
+      }
+
+      .seat-map-container {
+        position: relative;
+      }
+
+      .error-message {
+        color: #dc3545;
+        font-weight: bold;
+        margin-top: 10px;
+        padding: 10px;
+        border: 1px solid #dc3545;
+        border-radius: 5px;
+        background-color: #f8d7da;
+      }
+
+      .token-display {
+        margin-top: 10px;
+        padding: 8px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.9rem;
+      }
+
+      .token-info {
+        color: #0d6efd;
+        font-weight: bold;
+      }
+
+      .passenger-form {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+      }
+
+      .passenger-card {
+        margin-bottom: 10px;
+        padding: 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        background-color: #fff;
+      }
+
+      .gender-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        margin-left: 5px;
+      }
+
+      .gender-badge.male {
+        background-color: #cce5ff;
+        color: #004085;
+      }
+
+      .gender-badge.female {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+
+      .gender-badge.other {
+        background-color: #d4edda;
+        color: #155724;
+      }
+
+      /* New styles for gender prompt modal */
+      .gender-prompt-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .gender-prompt-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      .gender-prompt-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .gender-prompt-close {
+        font-size: 24px;
+        cursor: pointer;
+        background: none;
+        border: none;
+      }
+
+      /* Map selection styles */
+      .map-selection-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        padding: 20px;
+      }
+
+      .map-selection-title {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+
+      .map-options {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        width: 100%;
+      }
+
+      .map-option {
+        width: 200px;
+        text-align: center;
+        cursor: pointer;
+        transition: transform 0.2s;
+        padding: 15px;
+        border-radius: 8px;
+        border: 2px solid #dee2e6;
+        background-color: #f8f9fa;
+      }
+
+      .map-option:hover {
+        transform: scale(1.05);
+        border-color: #0d6efd;
+        background-color: #e9f0fe;
+      }
+
+      .map-option i {
+        font-size: 48px;
+        margin-bottom: 10px;
+        color: #0d6efd;
+      }
+
+      .map-option h5 {
+        margin-bottom: 5px;
+      }
+
+      .map-option p {
+        font-size: 14px;
+        color: #6c757d;
+        margin-bottom: 0;
+      }
+
+      /* New styles for AJAX request logs */
+      .ajax-logs {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .ajax-log-entry {
+        padding: 8px;
+        margin-bottom: 8px;
+        border-left: 3px solid #0d6efd;
+        background-color: #fff;
+        font-family: monospace;
+        font-size: 0.85rem;
+      }
+
+      .ajax-log-entry.success {
+        border-left-color: #28a745;
+      }
+
+      .ajax-log-entry.error {
+        border-left-color: #dc3545;
+      }
+
+      .ajax-log-entry pre {
+        margin: 5px 0 0 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      .ajax-log-title {
+        font-weight: bold;
+        color: #0d6efd;
+      }
+
+      .ajax-log-time {
+        color: #6c757d;
+        font-size: 0.8rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container my-5">
+      <h1 class="text-center mb-4">Flight Seat Selection</h1>
+
+      <!-- Passenger Information Form -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card">
+            <div
+              class="card-header bg-primary text-white d-flex justify-content-between align-items-center"
+            >
+              <h5 class="mb-0">Passenger Information</h5>
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="genderBoundToggle"
+                  checked
+                />
+                <label class="form-check-label" for="genderBoundToggle"
+                  >Gender-based restrictions</label
+                >
+              </div>
+            </div>
+            <div class="card-body passenger-form">
+              <div class="mb-3">
+                <label for="passengerCount" class="form-label"
+                  >Number of Passengers</label
+                >
+                <div class="d-flex align-items-center">
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="passengerCount"
+                    min="1"
+                    value="1"
+                    style="width: 100px"
+                  />
+                  <button
+                    id="updatePassengerCount"
+                    class="btn btn-primary ms-2"
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
+              <div id="passengerDetails">
+                <!-- Passenger details will be dynamically added here -->
+                <div class="passenger-card" data-passenger-id="1">
+                  <h6>Passenger 1</h6>
+                  <div class="mb-2">
+                    <label class="form-label">Gender</label>
+                    <div>
+                      <div class="form-check form-check-inline">
+                        <input
+                          class="form-check-input"
+                          type="radio"
+                          name="gender-1"
+                          id="male-1"
+                          value="male"
+                          checked
+                        />
+                        <label class="form-check-label" for="male-1"
+                          >Male</label
+                        >
+                      </div>
+                      <div class="form-check form-check-inline">
+                        <input
+                          class="form-check-input"
+                          type="radio"
+                          name="gender-1"
+                          id="female-1"
+                          value="female"
+                        />
+                        <label class="form-check-label" for="female-1"
+                          >Female</label
+                        >
+                      </div>
+                      <div class="form-check form-check-inline">
+                        <input
+                          class="form-check-input"
+                          type="radio"
+                          name="gender-1"
+                          id="other-1"
+                          value="other"
+                        />
+                        <label class="form-check-label" for="other-1"
+                          >Other</label
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">Seat Guide</h5>
+            </div>
+            <div class="card-body">
+              <div class="legend-item">
+                <div class="legend-color available-seat"></div>
+                <span>Available</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color selected-seat"></div>
+                <span>Selected</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color reserved-seat"></div>
+                <span>Reserved</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color inprogress-seat"></div>
+                <span>In Progress</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color disabled-seat"></div>
+                <span>Disabled</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color female-seat"></div>
+                <span>Female Reserved</span>
+              </div>
+
+              <div class="mt-3 d-flex align-items-center">
+                <div class="form-check form-switch me-3">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="consecutiveSeatsToggle"
+                  />
+                  <label class="form-check-label" for="consecutiveSeatsToggle"
+                    >Require consecutive seats</label
+                  >
+                </div>
+
+                <div id="seatsNumberContainer" class="d-none">
+                  <label for="numberOfSeats" class="form-label me-2"
+                    >Number of seats:</label
+                  >
+                  <input
+                    type="number"
+                    class="form-control form-control-sm d-inline-block"
+                    id="numberOfSeats"
+                    min="2"
+                    value="2"
+                    style="width: 70px"
+                    readonly
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-9">
+          <div class="card">
+            <div
+              class="card-header bg-primary text-white d-flex justify-content-between align-items-center"
+            >
+              <h5 class="mb-0">Seat Map</h5>
+              <div id="map-selector-container" class="map-selection d-none">
+                <select
+                  id="map-selector"
+                  class="form-select form-select-sm"
+                  style="width: 200px"
+                >
+                  <option value="boeing737">Boeing 737</option>
+                  <option value="airbusA320">Airbus A320</option>
+                  <option value="airbusA380">Airbus A380</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="seat-map-container">
+                <div id="seat-map">
+                  <!-- Map selection UI will be shown here initially -->
+                  <div class="map-selection-container">
+                    <div class="map-selection-title">SELECT A MAP</div>
+                    <div class="map-options">
+                      <div class="map-option" data-map="boeing737">
+                        <i class="fas fa-plane"></i>
+                        <h5>Boeing 737</h5>
+                        <p></p>
+                      </div>
+                      <div class="map-option" data-map="airbusA320">
+                        <i class="fas fa-plane"></i>
+                        <h5>Airbus A320</h5>
+                        <p></p>
+                      </div>
+                      <div class="map-option" data-map="airbusA380">
+                        <i class="fas fa-plane"></i>
+                        <h5>Airbus A380</h5>
+                        <p></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="control-buttons d-none">
+                  <button id="zoom-in" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                  </button>
+                  <button id="zoom-out" class="btn btn-primary">
+                    <i class="fas fa-minus"></i>
+                  </button>
+                  <button id="toggle-pan" class="btn btn-primary">
+                    <i class="fas fa-hand"></i>Enable Panning
+                  </button>
+                </div>
+              </div>
+
+              <div
+                id="error-container"
+                class="mt-3"
+                style="display: none"
+              ></div>
+
+              <div id="token-container" class="mt-3">
+                <div class="token-display">
+                  <div>
+                    <span class="token-info">Session Token:</span>
+                    <span id="session-token-display">Token1234</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- New AJAX Request Logs Section -->
+              <div class="card mt-3">
+                <div
+                  class="card-header bg-primary text-white d-flex justify-content-between align-items-center"
+                >
+                  <h5 class="mb-0">AJAX Request Logs</h5>
+                  <button id="clear-logs" class="btn btn-sm btn-light">
+                    Clear
+                  </button>
+                </div>
+                <div class="card-body p-0">
+                  <div id="ajax-logs" class="ajax-logs">
+                    <div class="text-center text-muted p-3">
+                      <i class="fas fa-info-circle me-2"></i>
+                      No requests logged yet. Select seats to see AJAX calls.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">Selected Seats</h5>
+            </div>
+            <div class="card-body">
+              <div id="selected-seats-list">
+                <p class="text-muted">No seats selected</p>
+              </div>
+              <div id="clear-message" class="text-muted mt-2 d-none">
+                To clear all selected seats, click the remove button above.
+              </div>
+              <div id="total-seats" class="mt-2 mb-2 fw-bold d-none">
+                Total selected: <span id="seats-count">0</span>
+              </div>
+              <div id="cart-total" class="mt-2 mb-2 fw-bold">
+                Cart Total: <span id="cart-value">₹0</span>
+              </div>
+
+              <div class="mt-3">
+                <button
+                  id="confirm-selection"
+                  class="btn btn-success w-100"
+                  disabled
+                >
+                  Confirm Selection
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mt-3">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0" id="pricing-title">Seat Pricing</h5>
+            </div>
+            <div class="card-body" id="pricing-details">
+              <p class="text-muted">Please select a map to view pricing</p>
+            </div>
+          </div>
+
+          <div class="card mt-3">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">Performance Settings</h5>
+            </div>
+            <div class="card-body">
+              <div class="form-check form-switch">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="enableCacheToggle"
+                  checked
+                />
+                <label class="form-check-label" for="enableCacheToggle"
+                  >Enable map caching</label
+                >
+              </div>
+              <small class="text-muted">
+                Disable caching if you experience memory issues on slower
+                devices.
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal for displaying token information -->
+      <div
+        class="modal fade"
+        id="tokenModal"
+        tabindex="-1"
+        aria-labelledby="tokenModalLabel"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="tokenModalLabel">
+                Seat Selection Confirmation
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body" id="token-modal-body">
+              <!-- Content will be dynamically populated -->
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Close
+              </button>
+              <button type="button" class="btn btn-primary" id="proceed-button">
+                Proceed to Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gender Prompt Modal -->
+      <div class="gender-prompt-modal" id="genderPromptModal">
+        <div class="gender-prompt-content">
+          <div class="gender-prompt-header">
+            <h5>Please Provide Passenger Information</h5>
+            <button class="gender-prompt-close" id="closeGenderPrompt">
+              &times;
+            </button>
+          </div>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            Gender information is required for seat selection due to
+            gender-based seating restrictions.
+          </div>
+          <div id="genderPromptPassengerDetails">
+            <!-- Passenger details will be dynamically added here -->
+          </div>
+          <div class="mt-3">
+            <button id="confirmGenderPrompt" class="btn btn-primary w-100">
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Define seat statuses
+      const SEAT_STATUS = {
+        AVAILABLE: "available",
+        SELECTED: "selected",
+        RESERVED: "reserved",
+        FEMALE_RESERVED: "female_reserved",
+        DISABLED: "disabled",
+        INPROGRESS: "inprogress",
+      };
+
+      // Token management system
+      const tokenSystem = {
+        sessionToken: "Token1234",
+        generateSeatToken: function (seatId) {
+          // Modified to create unique tokens based on seat ID
+          return `${seatId}SeatToken`;
+        },
+        validateSessionToken: function (token) {
+          return token === this.sessionToken;
+        },
+        validateSeatToken: function (token) {
+          return token.endsWith("SeatToken");
+        },
+        seatTokens: {},
+        // New method to generate a request token for AJAX calls
+        generateRequestToken: function () {
+          return `req_${Math.random()
+            .toString(36)
+            .substring(2, 15)}_${Date.now()}`;
+        },
+      };
+
+      // AJAX request logger
+      const ajaxLogger = {
+        logs: [],
+        maxLogs: 20,
+
+        // Add a log entry
+        addLog: function (
+          type,
+          endpoint,
+          payload,
+          response = null,
+          isError = false
+        ) {
+          const logEntry = {
+            id: Date.now(),
+            type: type,
+            endpoint: endpoint,
+            payload: payload,
+            response: response,
+            timestamp: new Date(),
+            isError: isError,
+          };
+
+          this.logs.unshift(logEntry);
+
+          // Trim logs if they exceed the maximum
+          if (this.logs.length > this.maxLogs) {
+            this.logs = this.logs.slice(0, this.maxLogs);
+          }
+
+          this.renderLogs();
+        },
+
+        // Clear all logs
+        clearLogs: function () {
+          this.logs = [];
+          this.renderLogs();
+        },
+
+        // Render logs to the UI
+        renderLogs: function () {
+          const logsContainer = document.getElementById("ajax-logs");
+
+          if (this.logs.length === 0) {
+            logsContainer.innerHTML = `
+              <div class="text-center text-muted p-3">
+                <i class="fas fa-info-circle me-2"></i>
+                No requests logged yet. Select seats to see AJAX calls.
+              </div>
+            `;
+            return;
+          }
+
+          let logsHTML = "";
+
+          this.logs.forEach((log) => {
+            const statusClass = log.isError ? "error" : "success";
+            const formattedTime = log.timestamp.toLocaleTimeString();
+
+            logsHTML += `
+              <div class="ajax-log-entry ${statusClass}">
+                <div class="d-flex justify-content-between">
+                  <span class="ajax-log-title">${log.type} to ${
+              log.endpoint
+            }</span>
+                  <span class="ajax-log-time">${formattedTime}</span>
+                </div>
+                <pre>${JSON.stringify(log.payload, null, 2)}</pre>
+                ${
+                  log.response
+                    ? `<div class="mt-2"><strong>Response:</strong><pre>${JSON.stringify(
+                        log.response,
+                        null,
+                        2
+                      )}</pre></div>`
+                    : ""
+                }
+              </div>
+            `;
+          });
+
+          logsContainer.innerHTML = logsHTML;
+        },
+      };
+
+      // Gender-based seat selection configuration
+      const genderConfig = {
+        genderBound: true, // Feature toggle for gender-based restrictions
+        passengerGenders: {}, // Map of passenger ID to gender
+        seatGenderMap: {}, // Map of seat ID to gender of passenger occupying it
+      };
+
+      let requireConsecutiveSeats = false;
+      let requiredSeatsCount = 2;
+      let totalAvailableSeats = 0;
+      let currentPassengerCount = 1;
+      let processingNewSeatSelection = false; // Flag to prevent multiple seat selections at once
+
+      // Default cache config
+      let cacheConfig = {
+        enabled: true, //can be toggled by user
+        preloadMaps: true,
+      };
+
+      const seatData = {
+        reservedSeats: [],
+        femaleReservedSeats: [],
+        disabledSeats: [],
+        inProgressSeats: [],
+        selectedSeats: {},
+        allSeats: [],
+        lastSelectedSeat: null,
+        adjacentToFemaleReserved: [],
+      };
+
+      const availableMaps = ["boeing737", "airbusA320", "airbusA380"];
+
+      // Cache for preloaded SVGs and configurations
+      const svgCache = {};
+      const configCache = {};
+
+      let currentMapKey = null;
+      let planeSettings = null;
+
+      const chartDom = document.getElementById("seat-map");
+      let myChart = null; // Initialize chart later
+
+      let panningEnabled = false;
+      let mapInitialized = false;
+
+      // Display session token on page load
+      document.getElementById("session-token-display").textContent =
+        tokenSystem.sessionToken;
+
+      // Initialize gender toggle
+      document
+        .getElementById("genderBoundToggle")
+        .addEventListener("change", function () {
+          genderConfig.genderBound = this.checked;
+          console.log(
+            `Gender-based restrictions ${
+              genderConfig.genderBound ? "enabled" : "disabled"
+            }`
+          );
+
+          // If gender restrictions are disabled, clear female-only seats
+          if (!genderConfig.genderBound) {
+            seatData.adjacentToFemaleReserved = [];
+            // Redraw the chart to update seat colors
+            if (myChart) {
+              updateChartRegions();
+            }
+          } else {
+            // If re-enabling, recalculate female-only seats based on current reservations
+            updateAdjacentToFemaleReservedSeats();
+          }
+
+          // Log the gender restriction change via AJAX
+          makeAjaxCall("POST", "/api/preferences/update", {
+            sessionToken: tokenSystem.sessionToken,
+            requestToken: tokenSystem.generateRequestToken(),
+            preference: "genderRestriction",
+            value: genderConfig.genderBound,
+            aircraft: getCurrentAircraftName(),
+            mapKey: currentMapKey
+          });
+        });
+
+      // Initialize passenger count update button
+      document
+        .getElementById("updatePassengerCount")
+        .addEventListener("click", function () {
+          const newCount = parseInt(
+            document.getElementById("passengerCount").value
+          );
+
+          if (newCount < 1) {
+            alert("Please enter at least 1 passenger");
+            document.getElementById("passengerCount").value = 1;
+            return;
+          }
+
+          updatePassengerCount(newCount);
+
+          // Update consecutive seats count to match passenger count
+          if (requireConsecutiveSeats) {
+            document.getElementById("numberOfSeats").value = newCount;
+            requiredSeatsCount = newCount;
+          }
+
+          // If we have more selected seats than passengers, clear the selection
+          if (Object.keys(seatData.selectedSeats).length > newCount) {
+            showError(
+              `You can only select up to ${newCount} seats. Your selection has been cleared.`
+            );
+            clearAllSelectedSeats();
+          }
+
+          // Log passenger count update via AJAX
+          makeAjaxCall("POST", "/api/passengers/update", {
+            sessionToken: tokenSystem.sessionToken,
+            requestToken: tokenSystem.generateRequestToken(),
+            passengerCount: newCount,
+            timestamp: new Date().toISOString(),
+            aircraft: getCurrentAircraftName(),
+            mapKey: currentMapKey
+          });
+        });
+
+      // Function to get current aircraft name for logging
+      function getCurrentAircraftName() {
+        if (!planeSettings) return "Not Selected";
+        return planeSettings.name || currentMapKey || "Unknown";
+      }
+
+      // Function to update passenger count and generate passenger forms
+      function updatePassengerCount(count) {
+        const passengerDetails = document.getElementById("passengerDetails");
+
+        // Save current passenger genders
+        const currentGenders = {};
+        for (let i = 1; i <= currentPassengerCount; i++) {
+          const genderRadios = document.getElementsByName(`gender-${i}`);
+          for (const radio of genderRadios) {
+            if (radio.checked) {
+              currentGenders[i] = radio.value;
+              break;
+            }
+          }
+        }
+
+        // Clear current passenger forms
+        passengerDetails.innerHTML = "";
+
+        // Generate new passenger forms
+        for (let i = 1; i <= count; i++) {
+          const gender = currentGenders[i] || "male"; // Default to male if not previously set
+
+          const passengerCard = document.createElement("div");
+          passengerCard.className = "passenger-card";
+          passengerCard.setAttribute("data-passenger-id", i);
+
+          passengerCard.innerHTML = `
+            <h6>Passenger ${i}</h6>
+            <div class="mb-2">
+              <label class="form-label">Gender</label>
+              <div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="gender-${i}" id="male-${i}" value="male" ${
+            gender === "male" ? "checked" : ""
+          }>
+                  <label class="form-check-label" for="male-${i}">Male</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="gender-${i}" id="female-${i}" value="female" ${
+            gender === "female" ? "checked" : ""
+          }>
+                  <label class="form-check-label" for="female-${i}">Female</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="gender-${i}" id="other-${i}" value="other" ${
+            gender === "other" ? "checked" : ""
+          }>
+                  <label class="form-check-label" for="other-${i}">Other</label>
+                </div>
+              </div>
+            </div>
+          `;
+
+          passengerDetails.appendChild(passengerCard);
+
+          // Add event listeners to gender radios
+          const genderRadios = document.getElementsByName(`gender-${i}`);
+          for (const radio of genderRadios) {
+            radio.addEventListener("change", function () {
+              updatePassengerGender(i, this.value);
+            });
+          }
+
+          // Update passenger gender in config
+          updatePassengerGender(i, gender);
+        }
+
+        currentPassengerCount = count;
+
+        // If we have selected seats, validate them against the new passenger genders
+        if (Object.keys(seatData.selectedSeats).length > 0) {
+          validateSelectedSeatsAgainstGender();
+        }
+      }
+
+      // Function to update passenger gender in config
+      function updatePassengerGender(passengerId, gender) {
+        genderConfig.passengerGenders[passengerId] = gender;
+        console.log(`Updated passenger ${passengerId} gender to ${gender}`);
+
+        // Log gender update via AJAX
+        makeAjaxCall("POST", "/api/passengers/updateGender", {
+          sessionToken: tokenSystem.sessionToken,
+          requestToken: tokenSystem.generateRequestToken(),
+          passengerId: passengerId,
+          gender: gender,
+          timestamp: new Date().toISOString(),
+          aircraft: getCurrentAircraftName(),
+          mapKey: currentMapKey
+        });
+
+        // If we have selected seats, validate them against the new gender
+        if (Object.keys(seatData.selectedSeats).length > 0) {
+          validateSelectedSeatsAgainstGender();
+        }
+      }
+
+      // Function to validate selected seats against passenger genders
+      function validateSelectedSeatsAgainstGender() {
+        if (!genderConfig.genderBound) return true; // Skip validation if gender restrictions are disabled
+
+        // Count female passengers
+        let femalePassengerCount = 0;
+        for (const gender of Object.values(genderConfig.passengerGenders)) {
+          if (gender === "female") femalePassengerCount++;
+        }
+
+        // Check if any selected seats are adjacent to female reserved seats
+        const adjacentToFemaleSelectedSeats = Object.keys(
+          seatData.selectedSeats
+        ).filter((seat) => seatData.adjacentToFemaleReserved.includes(seat));
+
+        // If we have seats adjacent to female reserved but not enough female passengers
+        if (adjacentToFemaleSelectedSeats.length > femalePassengerCount) {
+          showError(
+            `You have selected ${adjacentToFemaleSelectedSeats.length} seats adjacent to female reserved seats but only have ${femalePassengerCount} female passengers. Please adjust your selection or passenger information.`
+          );
+          return false;
+        }
+
+        return true;
+      }
+
+      // Function to get adjacent seats
+      function getAdjacentSeats(seatName) {
+        if (!planeSettings) return [];
+
+        const seatParts = seatName.match(/(\d+)([A-G])/);
+        if (!seatParts) return [];
+
+        const row = parseInt(seatParts[1]);
+        const col = seatParts[2];
+
+        const validCols =
+          row >= 11
+            ? planeSettings.validCols.extended
+            : planeSettings.validCols.general;
+
+        const colIndex = validCols.indexOf(col);
+        if (colIndex === -1) return [];
+
+        const adjacentSeats = [];
+
+        // Same row, adjacent columns
+        if (colIndex > 0) {
+          adjacentSeats.push(`${row}${validCols[colIndex - 1]}`);
+        }
+
+        if (colIndex < validCols.length - 1) {
+          adjacentSeats.push(`${row}${validCols[colIndex + 1]}`);
+        }
+
+        return adjacentSeats;
+      }
+
+      // Function to update seats adjacent to female reserved seats
+      function updateAdjacentToFemaleReservedSeats() {
+        if (!genderConfig.genderBound || !planeSettings) return;
+
+        // Clear current adjacent seats
+        seatData.adjacentToFemaleReserved = [];
+
+        // Find all seats adjacent to female reserved seats
+        for (const seat of seatData.femaleReservedSeats) {
+          const adjacentSeats = getAdjacentSeats(seat);
+
+          for (const adjSeat of adjacentSeats) {
+            // Only add if it's not already reserved, disabled, or in progress
+            if (
+              !seatData.reservedSeats.includes(adjSeat) &&
+              !seatData.femaleReservedSeats.includes(adjSeat) &&
+              !seatData.disabledSeats.includes(adjSeat) &&
+              !seatData.inProgressSeats.includes(adjSeat) &&
+              !seatData.adjacentToFemaleReserved.includes(adjSeat)
+            ) {
+              seatData.adjacentToFemaleReserved.push(adjSeat);
+            }
+          }
+        }
+
+        // Update chart to reflect changes
+        if (myChart) {
+          updateChartRegions();
+        }
+        console.log(
+          "Updated seats adjacent to female reserved:",
+          seatData.adjacentToFemaleReserved
+        );
+      }
+
+      // Initialize cache toggle
+      document
+        .getElementById("enableCacheToggle")
+        .addEventListener("change", function () {
+          cacheConfig.enabled = this.checked;
+
+          // If cache is disabled, clear existing caches
+          if (!cacheConfig.enabled) {
+            // Clear caches but keep current map
+            const currentSvg = svgCache[currentMapKey];
+            const currentConfig = configCache[currentMapKey];
+
+            // Clear caches
+            Object.keys(svgCache).forEach((key) => delete svgCache[key]);
+            Object.keys(configCache).forEach((key) => delete configCache[key]);
+
+            // Restore current map to cache
+            if (currentSvg) svgCache[currentMapKey] = currentSvg;
+            if (currentConfig) configCache[currentMapKey] = currentConfig;
+
+            console.log(
+              "Map caching disabled. Cache cleared except current map."
+            );
+          } else {
+            console.log("Map caching enabled.");
+          }
+
+          // Log cache setting change via AJAX
+          makeAjaxCall("POST", "/api/preferences/update", {
+            sessionToken: tokenSystem.sessionToken,
+            requestToken: tokenSystem.generateRequestToken(),
+            preference: "caching",
+            value: cacheConfig.enabled,
+            aircraft: getCurrentAircraftName(),
+            mapKey: currentMapKey
+          });
+        });
+
+      function showLoadingSpinner() {
+        if (!document.getElementById("map-spinner")) {
+          const spinnerOverlay = document.createElement("div");
+          spinnerOverlay.className = "spinner-overlay";
+          spinnerOverlay.id = "map-spinner";
+
+          spinnerOverlay.innerHTML = `
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="spinner-text">Loading map...</div>
+          </div>
+        `;
+
+          chartDom.appendChild(spinnerOverlay);
+        } else {
+          document.getElementById("map-spinner").style.display = "flex";
+        }
+      }
+
+      function hideLoadingSpinner() {
+        const spinner = document.getElementById("map-spinner");
+        if (spinner) {
+          spinner.style.display = "none";
+        }
+      }
+
+      // Load map configuration via AJAX
+      function loadMapConfig(mapKey, callback) {
+        // Check if caching is enabled and if the config is already cached
+        if (cacheConfig.enabled && configCache[mapKey]) {
+          callback(configCache[mapKey]);
+          return;
+        }
+
+        const configUrl = `maps/${mapKey}/config.json`;
+
+        // Log map config request via AJAX
+        makeAjaxCall("GET", `/api/maps/${mapKey}/config`, {
+          sessionToken: tokenSystem.sessionToken,
+          requestToken: tokenSystem.generateRequestToken(),
+          mapKey: mapKey
+        });
+
+        $.ajax({
+          url: configUrl,
+          type: "GET",
+          dataType: "json",
+          success: function (config) {
+            // Only cache if enabled
+            if (cacheConfig.enabled) {
+              configCache[mapKey] = config;
+            }
+            callback(config);
+          },
+          error: function (xhr, status, error) {
+            console.error(`Failed to load map configuration: ${mapKey}`, error);
+
+            const fallbackConfig = getFallbackConfig(mapKey);
+            // Only cache if enabled
+            if (cacheConfig.enabled) {
+              configCache[mapKey] = fallbackConfig;
+            }
+            callback(fallbackConfig);
+          },
+        });
+      }
+
+      function getFallbackConfig(mapKey) {
+        const configs = {
+          boeing737: {
+            name: "Boeing 737",
+            svgPath: "flight-seats.svg",
+            validCols: {
+              general: ["A", "B", "C", "E", "F", "G"],
+              extended: ["A", "B", "C", "D", "E", "F", "G"],
+            },
+            rowSkippingRules: {
+              3: 7,
+              4: 7,
+              5: 7,
+              6: 7,
+              15: 17,
+              16: 17,
+              35: 1,
+            },
+            reservedSeats: [
+              "11A",
+              "11C",
+              "12B",
+              "13D",
+              "20C",
+              "22E",
+              "25F",
+              "28A",
+              "30B",
+            ],
+            disabledSeats: ["12C", "21A", "21D", "24D", "25A"],
+            inProgressSeats: ["14A", "14C", "17B", "1C", "24A"],
+            seatGenderMap: {
+              "11A": "male",
+              "11C": "male",
+              "12B": "male",
+              "13D": "male",
+              "20C": "female",
+              "22E": "female",
+              "25F": "male",
+              "28A": "female",
+              "30B": "male",
+            },
+            seatPrices: {
+              // Individual seat pricing
+              seats: {
+                "1A": 6000,
+                "1B": 6000,
+                "1C": 6000,
+                "1E": 6000,
+                "1F": 6000,
+                "1G": 6000,
+                "2A": 6000,
+                "2B": 6000,
+                "2C": 6000,
+                "2E": 6000,
+                "2F": 6000,
+                "2G": 6000,
+                "3A": 6000,
+                "3B": 6000,
+                "3C": 6000,
+                "3E": 6000,
+                "3F": 6000,
+                "3G": 6000,
+                "4A": 6000,
+                "4B": 6000,
+                "4C": 6000,
+                "4E": 6000,
+                "4F": 6000,
+                "4G": 6000,
+                "5A": 6000,
+                "5B": 6000,
+                "5C": 6000,
+                "5E": 6000,
+                "5F": 6000,
+                "5G": 6000,
+                "6A": 6000,
+                "6B": 6000,
+                "6C": 6000,
+                "6E": 6000,
+                "6F": 6000,
+                "6G": 6000,
+                "10A": 3000,
+                "10G": 3000,
+                "11A": 3000,
+                "11G": 3000,
+              },
+              // Default prices for seat types
+              default: 4000,
+              window: 5000,
+            },
+          },
+          airbusA320: {
+            name: "Airbus A320",
+            svgPath: "flight-seats320.svg",
+            validCols: {
+              general: ["A", "B", "C", "E", "F", "G"],
+              extended: ["A", "B", "C", "D", "E", "F", "G"],
+            },
+            rowSkippingRules: {
+              3: 7,
+              4: 7,
+              5: 7,
+              6: 7,
+              15: 17,
+              16: 17,
+              35: 1,
+            },
+            reservedSeats: [
+              "10A",
+              "10F",
+              "15C",
+              "15D",
+              "22B",
+              "18A",
+              "19F",
+              "24C",
+              "27E",
+            ],
+            disabledSeats: ["11C", "11D", "23A", "23F", "28E"],
+            inProgressSeats: ["12A", "12F", "18B", "18E", "25C"],
+            seatGenderMap: {
+              "10A": "female",
+              "10F": "male",
+              "15C": "female",
+              "15D": "female",
+              "22B": "male",
+              "18A": "female",
+              "19F": "female",
+              "24C": "male",
+              "27E": "female",
+            },
+            seatPrices: {
+              // Individual seat pricing
+              seats: {
+                "1A": 6500,
+                "1B": 6500,
+                "1C": 6500,
+                "1E": 6500,
+                "1F": 6500,
+                "1G": 6500,
+                "2A": 6500,
+                "2B": 6500,
+                "2C": 6500,
+                "2E": 6500,
+                "2F": 6500,
+                "2G": 6500,
+                "3A": 6500,
+                "3B": 6500,
+                "3C": 6500,
+                "3E": 6500,
+                "3F": 6500,
+                "3G": 6500,
+                "4A": 6500,
+                "4B": 6500,
+                "4C": 6500,
+                "4E": 6500,
+                "4F": 6500,
+                "4G": 6500,
+                "5A": 6500,
+                "5B": 6500,
+                "5C": 6500,
+                "5E": 6500,
+                "5F": 6500,
+                "5G": 6500,
+                "9A": 3500,
+                "9G": 3500,
+                "10A": 3500,
+                "10G": 3500,
+              },
+              // Default prices for seat types
+              default: 4500,
+              window: 5500,
+            },
+          },
+          airbusA380: {
+            name: "Airbus A380",
+            svgPath: "flight-seats380.svg",
+            validCols: {
+              general: ["A", "B", "C", "E", "F", "G"],
+              extended: ["A", "B", "C", "D", "E", "F", "G"],
+            },
+            rowSkippingRules: {
+              3: 7,
+              4: 7,
+              5: 7,
+              6: 7,
+              15: 17,
+              16: 17,
+              35: 1,
+            },
+            reservedSeats: [
+              "17A",
+              "17B",
+              "30D",
+              "30G",
+              "1C",
+              "1D",
+              "10E",
+              "12F",
+              "15A",
+              "22C",
+            ],
+            disabledSeats: ["18C", "18A", "31A", "31F", "2E", "2F"],
+            inProgressSeats: ["20D", "20F", "31B", "34A", "8B", "8A"],
+            seatGenderMap: {
+              "17A": "female",
+              "17B": "female",
+              "30D": "male",
+              "30G": "male",
+              "1C": "female",
+              "1D": "male",
+              "10E": "female",
+              "12F": "female",
+              "15A": "male",
+              "22C": "female",
+            },
+            seatPrices: {
+              // Individual seat pricing
+              seats: {
+                "1A": 7000,
+                "1B": 7000,
+                "1E": 7000,
+                "1F": 7000,
+                "1G": 7000,
+                "2A": 7000,
+                "2B": 7000,
+                "2C": 7000,
+                "2D": 7000,
+                "3A": 7000,
+                "3B": 7000,
+                "3C": 7000,
+                "3D": 7000,
+                "3E": 7000,
+                "3F": 7000,
+                "3G": 7000,
+                "4A": 7000,
+                "4B": 7000,
+                "4C": 7000,
+                "4D": 7000,
+                "4E": 7000,
+                "4F": 7000,
+                "4G": 7000,
+                "5A": 7000,
+                "5B": 7000,
+                "5C": 7000,
+                "5D": 7000,
+                "5E": 7000,
+                "5F": 7000,
+                "5G": 7000,
+                "6A": 7000,
+                "6B": 7000,
+                "6C": 7000,
+                "6D": 7000,
+                "6E": 7000,
+                "6F": 7000,
+                "6G": 7000,
+                "7A": 7000,
+                "7B": 7000,
+                "7C": 7000,
+                "7D": 7000,
+                "7E": 7000,
+                "7F": 7000,
+                "7G": 7000,
+                "12A": 4000,
+                "12G": 4000,
+                "13A": 4000,
+                "13G": 4000,
+              },
+              // Default prices for seat types
+              default: 5000,
+              window: 6000,
+            },
+          },
+        };
+
+        return configs[mapKey] || configs["boeing737"];
+      }
+
+      // Load SVG via AJAX
+      function loadSvg(svgPath, callback) {
+        // Check if caching is enabled and if the SVG is already cached
+        if (cacheConfig.enabled && svgCache[svgPath]) {
+          callback(svgCache[svgPath]);
+          return;
+        }
+
+        // Log SVG load request via AJAX
+        makeAjaxCall("GET", `/api/maps/svg/${svgPath}`, {
+          sessionToken: tokenSystem.sessionToken,
+          requestToken: tokenSystem.generateRequestToken(),
+          svgPath: svgPath,
+          aircraft: getCurrentAircraftName(),
+          mapKey: currentMapKey
+        });
+
+        $.ajax({
+          url: svgPath,
+          type: "GET",
+          dataType: "text",
+          success: function (svg) {
+            // Add price labels to the SVG
+            const modifiedSvg = addPriceLabelsToSvg(svg);
+            // Only cache if enabled
+            if (cacheConfig.enabled) {
+              svgCache[svgPath] = modifiedSvg;
+            }
+            callback(modifiedSvg);
+          },
+          error: function (xhr, status, error) {
+            console.error(`Failed to load SVG: ${svgPath}`, error);
+            alert(`Failed to load map: ${svgPath}. Error: ${error}`);
+          },
+        });
+      }
+
+      function addPriceLabelsToSvg(svg) {
+        // Parse the SVG
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(svg, "image/svg+xml");
+
+        // Find the Text group to add our price labels
+        let textGroup = svgDoc.getElementById("Text");
+        if (!textGroup) {
+          // If Text group doesn't exist, create one
+          textGroup = svgDoc.createElementNS("http://www.w3.org/2000/svg", "g");
+          textGroup.setAttribute("id", "Text");
+          svgDoc.documentElement.appendChild(textGroup);
+        }
+
+        // Add price labels
+        const priceLabels = `
+      `;
+
+        textGroup.innerHTML += priceLabels;
+
+        // Serialize back to string
+        return new XMLSerializer().serializeToString(svgDoc);
+      }
+
+      function loadMap(mapKey, callback) {
+        showLoadingSpinner();
+
+        // Reset seat data before loading new map
+        seatData.reservedSeats = [];
+        seatData.femaleReservedSeats = [];
+        seatData.disabledSeats = [];
+        seatData.inProgressSeats = [];
+        seatData.adjacentToFemaleReserved = [];
+        seatData.allSeats = [];
+        seatData.selectedSeats = {};
+        seatData.lastSelectedSeat = null;
+
+        // Log map load request via AJAX
+        makeAjaxCall("GET", `/api/maps/load`, {
+          sessionToken: tokenSystem.sessionToken,
+          requestToken: tokenSystem.generateRequestToken(),
+          mapKey: mapKey
+        });
+
+        loadMapConfig(mapKey, function (config) {
+          loadSvg(config.svgPath, function (svg) {
+            hideLoadingSpinner();
+
+            // Set plane settings
+            planeSettings = config;
+
+            // Update pricing info
+            updatePricingInfo();
+
+            // Generate tokens for all seats when loading the map
+            generateTokensForAllSeats(config);
+
+            // Initialize seat gender map from config
+            if (config.seatGenderMap) {
+              genderConfig.seatGenderMap = { ...config.seatGenderMap };
+
+              // Categorize reserved seats based on gender
+              config.reservedSeats.forEach((seat) => {
+                if (config.seatGenderMap[seat] === "female") {
+                  seatData.femaleReservedSeats.push(seat);
+                } else {
+                  seatData.reservedSeats.push(seat);
+                }
+              });
+            } else {
+              // If no gender map in config, treat all reserved seats as regular
+              seatData.reservedSeats = [...config.reservedSeats];
+            }
+
+            // Set other seat data
+            seatData.disabledSeats = [...config.disabledSeats];
+            seatData.inProgressSeats = [...config.inProgressSeats];
+
+            // Extract all seat names from SVG
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svg, "image/svg+xml");
+            const seatElements = svgDoc.querySelectorAll("[id]");
+
+            seatElements.forEach((element) => {
+              const seatId = element.id;
+              if (
+                seatId &&
+                !seatId.startsWith("svg_") &&
+                !seatId.startsWith("layer")
+              ) {
+                seatData.allSeats.push(seatId);
+              }
+            });
+
+            totalAvailableSeats =
+              seatData.allSeats.length -
+              seatData.reservedSeats.length -
+              seatData.femaleReservedSeats.length -
+              seatData.disabledSeats.length -
+              seatData.inProgressSeats.length;
+
+            // Update seats adjacent to female reserved seats
+            updateAdjacentToFemaleReservedSeats();
+
+            callback(config, svg);
+            console.log("Loading config for map:", mapKey);
+          });
+        });
+      }
+
+      // Generate tokens for all seats
+      function generateTokensForAllSeats(config) {
+        // Clear previous tokens
+        tokenSystem.seatTokens = {};
+
+        // Generate tokens for all seats in the configuration
+        const allSeats = [];
+
+        // Add all possible seats based on rows and columns
+        for (let row = 1; row <= 35; row++) {
+          const cols =
+            row >= 11 ? config.validCols.extended : config.validCols.general;
+          cols.forEach((col) => {
+            const seatId = `${row}${col}`;
+            allSeats.push(seatId);
+          });
+        }
+
+        // Generate tokens for each seat
+        allSeats.forEach((seatId) => {
+          tokenSystem.seatTokens[seatId] =
+            tokenSystem.generateSeatToken(seatId);
+        });
+
+        console.log("Tokens generated for all seats");
+
+        // Log token generation via AJAX
+        makeAjaxCall("POST", "/api/tokens/generate", {
+          sessionToken: tokenSystem.sessionToken,
+          requestToken: tokenSystem.generateRequestToken(),
+          tokenCount: allSeats.length,
+          timestamp: new Date().toISOString(),
+          aircraft: getCurrentAircraftName(),
+          mapKey: currentMapKey
+        });
+      }
+
+      function preloadAllMaps() {
+        if (cacheConfig.enabled && cacheConfig.preloadMaps) {
+          availableMaps.forEach(function (mapKey) {
+            if (mapKey !== currentMapKey) {
+              loadMap(mapKey, function () {
+                console.log(`Preloaded map: ${mapKey}`);
+              });
+            }
+          });
+        } else {
+          console.log(
+            "Map preloading skipped - caching disabled or preloading disabled"
+          );
+        }
+      }
+
+      function initializeMap(mapKey) {
+        currentMapKey = mapKey;
+
+        // Show the map selector dropdown
+        document
+          .getElementById("map-selector-container")
+          .classList.remove("d-none");
+        document.getElementById("map-selector").value = mapKey;
+
+        // Show control buttons
+        document.querySelector(".control-buttons").classList.remove("d-none");
+
+        // Load the map (config and SVG)
+        loadMap(mapKey, function (config, svg) {
+          // Remove the map selection UI
+          const mapSelectionContainer = document.querySelector(
+            ".map-selection-container"
+          );
+          if (mapSelectionContainer) {
+            mapSelectionContainer.remove();
+          }
+
+          // Initialize chart
+          if (myChart) {
+            myChart.dispose();
+          }
+          myChart = echarts.init(chartDom);
+
+          // Register the map
+          echarts.registerMap("flight-seats", { svg: svg });
+
+          initializeChart();
+          updateSelectedSeatsDisplay();
+          mapInitialized = true;
+        });
+      }
+
+      // Add event listeners to map options
+      document.querySelectorAll(".map-option").forEach((option) => {
+        option.addEventListener("click", function () {
+          const mapKey = this.getAttribute("data-map");
+          initializeMap(mapKey);
+        });
+      });
+
+      // Map selector change event
+      document
+        .getElementById("map-selector")
+        .addEventListener("change", function () {
+          const selectedMap = this.value;
+          if (selectedMap === currentMapKey) return;
+
+          if (Object.keys(seatData.selectedSeats).length > 0) {
+            if (
+              !confirm(
+                "Changing the map will clear all your selected seats. Do you want to continue?"
+              )
+            ) {
+              this.value = currentMapKey;
+              return;
+            }
+          }
+
+          // Log map change via AJAX
+          makeAjaxCall("POST", "/api/maps/change", {
+            sessionToken: tokenSystem.sessionToken,
+            requestToken: tokenSystem.generateRequestToken(),
+            previousMap: currentMapKey,
+            previousAircraft: getCurrentAircraftName(),
+            newMap: selectedMap,
+            timestamp: new Date().toISOString()
+          });
+
+          initializeMap(selectedMap);
+        });
+
+      document
+        .getElementById("consecutiveSeatsToggle")
+        .addEventListener("change", function () {
+          requireConsecutiveSeats = this.checked;
+          const seatsNumberContainer = document.getElementById(
+            "seatsNumberContainer"
+          );
+
+          if (requireConsecutiveSeats) {
+            // Set number of seats to match passenger count
+            const passengerCount = parseInt(
+              document.getElementById("passengerCount").value
+            );
+            document.getElementById("numberOfSeats").value = passengerCount;
+            requiredSeatsCount = passengerCount;
+
+            seatsNumberContainer.classList.remove("d-none");
+            clearMessage.classList.remove("d-none"); // Show the message
+
+            if (Object.keys(seatData.selectedSeats).length > 0) {
+              clearAllSelectedSeats();
+            }
+          } else {
+            seatsNumberContainer.classList.add("d-none");
+            clearMessage.classList.add("d-none");
+            clearAllSelectedSeats();
+          }
+
+          // Log consecutive seats toggle via AJAX
+          makeAjaxCall("POST", "/api/preferences/update", {
+            sessionToken: tokenSystem.sessionToken,
+            requestToken: tokenSystem.generateRequestToken(),
+            preference: "consecutiveSeats",
+            value: requireConsecutiveSeats,
+            requiredCount: requireConsecutiveSeats ? requiredSeatsCount : null,
+            aircraft: getCurrentAircraftName(),
+            mapKey: currentMapKey
+          });
+
+          // If gender restrictions are enabled, prompt for gender information
+          if (requireConsecutiveSeats && genderConfig.genderBound) {
+            showGenderPrompt();
+          }
+        });
+
+      // Make the number of seats field read-only and update it based on passenger count
+      document
+        .getElementById("numberOfSeats")
+        .addEventListener("click", function () {
+          showError(
+            "Please update the number of passengers from the Passenger Information section."
+          );
+        });
+
+      function clearAllSelectedSeats() {
+        if (!myChart) return;
+
+        Object.keys(seatData.selectedSeats).forEach((seat) => {
+          myChart.dispatchAction({
+            type: "geoUnSelect",
+            name: seat,
+          });
+        });
+
+        seatData.selectedSeats = {};
+        seatData.lastSelectedSeat = null;
+
+        updateSelectedSeatsDisplay();
+
+        const clearMessage = document.getElementById("clear-message");
+        if (requireConsecutiveSeats) {
+          clearMessage.classList.remove("d-none");
+        } else {
+          clearMessage.classList.add("d-none");
+        }
+
+        // Log seat selection clear via AJAX
+        makeAjaxCall("POST", "/api/seats/clear", {
+          sessionToken: tokenSystem.sessionToken,
+          requestToken: tokenSystem.generateRequestToken(),
+          timestamp: new Date().toISOString(),
+          aircraft: getCurrentAircraftName(),
+          mapKey: currentMapKey
+        });
+      }
+
+      function initializeChart() {
+        if (!myChart) return;
+
+        const regions = createRegionsConfig();
+
+        const option = {
+          tooltip: {
+            formatter: function (params) {
+              const seatName = params.name;
+              const seatPrice = getSeatPrice(seatName);
+
+              if (seatData.reservedSeats.includes(seatName)) {
+                return `<strong>Seat ${seatName}</strong><br>Status: Reserved<br>Price: ₹${seatPrice}`;
+              } else if (seatData.femaleReservedSeats.includes(seatName)) {
+                return `<strong>Seat ${seatName}</strong><br>Status: Female Reserved<br>Price: ₹${seatPrice}`;
+              } else if (seatData.disabledSeats.includes(seatName)) {
+                return `<strong>Seat ${seatName}</strong><br>Status: Disabled (Unavailable)`;
+              } else if (seatData.inProgressSeats.includes(seatName)) {
+                return `<strong>Seat ${seatName}</strong><br>Status: In Progress`;
+              } else if (seatData.adjacentToFemaleReserved.includes(seatName)) {
+                return `<strong>Seat ${seatName}</strong><br>Status: Female Only (Adjacent to Female Reserved)<br>Price: ₹${seatPrice}`;
+              } else if (seatData.selectedSeats[seatName]) {
+                return `<strong>Seat ${seatName}</strong><br>Status: Selected<br>Price: ₹${seatPrice}`;
+              } else {
+                return `<strong>Seat ${seatName}</strong><br>Status: Available<br>Price: ₹${seatPrice}<br>Click to select`;
+              }
+            },
+          },
+          geo: {
+            map: "flight-seats",
+            roam: true,
+            selectedMode: "multiple",
+            layoutCenter: ["50%", "50%"],
+            layoutSize: "95%",
+            tooltip: {
+              show: true,
+            },
+            itemStyle: {
+              color: "#fff",
+              borderColor: "#ccc",
+              borderWidth: 1,
+            },
+            emphasis: {
+              itemStyle: {
+                color: undefined,
+                borderColor: "#4CAF50",
+                borderWidth: 2,
+              },
+              label: {
+                show: false,
+              },
+            },
+            select: {
+              itemStyle: {
+                color: "#4CAF50",
+              },
+              label: {
+                show: false,
+              },
+            },
+            regions: regions,
+            scaleLimit: {
+              min: 1,
+              max: 3,
+            },
+          },
+        };
+
+        myChart.setOption(option);
+        myChart.on("geoselectchanged", handleSeatSelection);
+      }
+
+      // Function to update chart regions (used when gender restrictions change)
+      function updateChartRegions() {
+        if (!myChart) return;
+
+        const regions = createRegionsConfig();
+        myChart.setOption({
+          geo: {
+            regions: regions,
+          },
+        });
+      }
+
+      document.getElementById("zoom-in").addEventListener("click", function () {
+        if (!myChart) return;
+
+        const option = myChart.getOption();
+        let zoomLevel = option.geo[0].zoom || 1;
+        zoomLevel = Math.min(zoomLevel * 1.2, 3);
+        myChart.setOption({ geo: [{ zoom: zoomLevel }] });
+      });
+
+      document
+        .getElementById("zoom-out")
+        .addEventListener("click", function () {
+          if (!myChart) return;
+
+          const option = myChart.getOption();
+          let zoomLevel = option.geo[0].zoom || 1;
+          zoomLevel = Math.max(zoomLevel / 1.2, 1);
+          myChart.setOption({ geo: [{ zoom: zoomLevel }] });
+        });
+
+      document
+        .getElementById("toggle-pan")
+        .addEventListener("click", function () {
+          if (!myChart) return;
+
+          panningEnabled = !panningEnabled;
+          myChart.setOption({ geo: [{ roam: panningEnabled }] });
+
+          if (panningEnabled) {
+            chartDom.style.cursor = "grab";
+            this.innerHTML = '<i class="fas fa-lock"></i> Disable Panning';
+          } else {
+            chartDom.style.cursor = "auto";
+            this.innerHTML = '<i class="fas fa-hand"></i> Enable Panning';
+          }
+        });
+
+      function createRegionsConfig() {
+        const regions = [];
+        const selectedSeatsArray = Object.keys(seatData.selectedSeats);
+
+        // Regular reserved seats
+        seatData.reservedSeats.forEach((seatName) => {
+          regions.push({
+            name: seatName,
+            silent: true,
+            itemStyle: {
+              color: "#bf0e08",
+            },
+            emphasis: {
+              itemStyle: {
+                color: "#bf0e08",
+                borderColor: "#aaa",
+                borderWidth: 1,
+              },
+            },
+            select: {
+              itemStyle: {
+                color: "#bf0e08",
+              },
+            },
+          });
+        });
+
+        // Female reserved seats
+        seatData.femaleReservedSeats.forEach((seatName) => {
+          regions.push({
+            name: seatName,
+            silent: true,
+            itemStyle: {
+              color: "#ff69b4", // Pink color for female reserved seats
+            },
+            emphasis: {
+              itemStyle: {
+                color: "#ff69b4",
+                borderColor: "#aaa",
+                borderWidth: 1,
+              },
+            },
+            select: {
+              itemStyle: {
+                color: "#ff69b4",
+              },
+            },
+          });
+        });
+
+        // Seats adjacent to female reserved seats
+        if (genderConfig.genderBound) {
+          seatData.adjacentToFemaleReserved.forEach((seatName) => {
+            regions.push({
+              name: seatName,
+              silent: false, // Allow selection if female passengers are available
+              itemStyle: {
+                color: "#ffb6c1", // Light pink for seats adjacent to female reserved
+                borderColor: "#ff69b4",
+                borderWidth: 1,
+              },
+              emphasis: {
+                itemStyle: {
+                  color: "#ffb6c1",
+                  borderColor: "#ff69b4",
+                  borderWidth: 2,
+                },
+              },
+              select: {
+                itemStyle: {
+                  color: "#4CAF50", // Change to selected color when selected
+                },
+              },
+            });
+          });
+        }
+
+        // Disabled seats
+        seatData.disabledSeats.forEach((seatName) => {
+          regions.push({
+            name: seatName,
+            silent: true,
+            itemStyle: {
+              color: "#9e9e9e",
+            },
+            emphasis: {
+              itemStyle: {
+                color: "#9e9e9e",
+                borderColor: "#aaa",
+                borderWidth: 1,
+              },
+            },
+            select: {
+              itemStyle: {
+                color: "#9e9e9e",
+              },
+            },
+          });
+        });
+
+        // In-progress seats
+        seatData.inProgressSeats.forEach((seatName) => {
+          regions.push({
+            name: seatName,
+            silent: true,
+            itemStyle: {
+              color: "orange",
+            },
+            emphasis: {
+              itemStyle: {
+                color: "orange",
+                borderColor: "#aaa",
+                borderWidth: 1,
+              },
+            },
+            select: {
+              itemStyle: {
+                color: "orange",
+              },
+            },
+          });
+        });
+
+        // Selected seats - don't make them silent so they can be clicked to select new seats in consecutive mode
+        selectedSeatsArray.forEach((seatName) => {
+          regions.push({
+            name: seatName,
+            selected: true,
+            silent: false, // Allow clicking on selected seats
+          });
+        });
+
+        return regions;
+      }
+
+      function handleSeatSelection(params) {
+        // If gender restrictions are enabled and we don't have gender information, prompt for it
+        if (
+          genderConfig.genderBound &&
+          Object.keys(genderConfig.passengerGenders).length === 0
+        ) {
+          showGenderPrompt();
+          return;
+        }
+
+        // Prevent multiple seat selections from processing at once
+        if (processingNewSeatSelection) {
+          return;
+        }
+
+        processingNewSeatSelection = true;
+
+        const allSelectedNames = params.allSelected[0].name.slice();
+
+        // Check if we're trying to select more seats than passengers
+        if (allSelectedNames.length > currentPassengerCount) {
+          showError(
+            `You can only select up to ${currentPassengerCount} seats based on your passenger count.`
+          );
+
+          // Revert to previous selection
+          Object.keys(seatData.selectedSeats).forEach((seat) => {
+            myChart.dispatchAction({
+              type: "geoSelect",
+              name: seat,
+            });
+          });
+
+          // Deselect any new seats
+          allSelectedNames.forEach((seat) => {
+            if (!seatData.selectedSeats[seat]) {
+              myChart.dispatchAction({
+                type: "geoUnSelect",
+                name: seat,
+              });
+            }
+          });
+
+          processingNewSeatSelection = false;
+          return;
+        }
+
+        // Filter out seats that cannot be selected
+        const validSelectedNames = allSelectedNames.filter((seatName) => {
+          // Basic availability check
+          const isBasicAvailable =
+            !seatData.reservedSeats.includes(seatName) &&
+            !seatData.femaleReservedSeats.includes(seatName) &&
+            !seatData.disabledSeats.includes(seatName) &&
+            !seatData.inProgressSeats.includes(seatName);
+
+          if (!isBasicAvailable) return false;
+
+          // Gender restriction check
+          if (
+            genderConfig.genderBound &&
+            seatData.adjacentToFemaleReserved.includes(seatName)
+          ) {
+            // Check if we have any female passengers
+            const hasFemalePassenger = Object.values(
+              genderConfig.passengerGenders
+            ).some((gender) => gender === "female");
+
+            if (!hasFemalePassenger) {
+              showError(
+                "Only female passengers can select seats adjacent to female reserved seats."
+              );
+
+              // Deselect this seat
+              myChart.dispatchAction({
+                type: "geoUnSelect",
+                name: seatName,
+              });
+
+              return false;
+            }
+          }
+
+          return true;
+        });
+
+        // Check gender restrictions for seats adjacent to female reserved
+        if (genderConfig.genderBound) {
+          const adjacentToFemaleSelectedSeats = validSelectedNames.filter(
+            (seat) => seatData.adjacentToFemaleReserved.includes(seat)
+          );
+
+          // Count female passengers
+          let femalePassengerCount = 0;
+          for (const gender of Object.values(genderConfig.passengerGenders)) {
+            if (gender === "female") femalePassengerCount++;
+          }
+
+          // If we have seats adjacent to female reserved but not enough female passengers
+          if (adjacentToFemaleSelectedSeats.length > femalePassengerCount) {
+            showError(
+              `You have selected ${adjacentToFemaleSelectedSeats.length} seats adjacent to female reserved seats but only have ${femalePassengerCount} female passengers. Please adjust your selection or passenger information.`
+            );
+
+            // Revert the selection
+            adjacentToFemaleSelectedSeats.forEach((seat) => {
+              myChart.dispatchAction({
+                type: "geoUnSelect",
+                name: seat,
+              });
+            });
+
+            // Update validSelectedNames to exclude seats adjacent to female reserved
+            const updatedValidSelectedNames = validSelectedNames.filter(
+              (seat) => !seatData.adjacentToFemaleReserved.includes(seat)
+            );
+
+            if (requireConsecutiveSeats) {
+              handleConsecutiveSeatSelection(updatedValidSelectedNames);
+            } else {
+              // Create new selectedSeats object with additional information
+              const newSelectedSeats = {};
+              updatedValidSelectedNames.forEach((seat) => {
+                newSelectedSeats[seat] = {
+                  tokenNumber: tokenSystem.seatTokens[seat],
+                  selectionTimestamp: new Date().toISOString(),
+                };
+              });
+              seatData.selectedSeats = newSelectedSeats;
+            }
+
+            updateSelectedSeatsDisplay();
+            processingNewSeatSelection = false;
+            return;
+          }
+        }
+
+        if (requireConsecutiveSeats) {
+          // Find the newly selected seat (if any)
+          const newSelectedSeat = findNewlySelectedSeat(validSelectedNames);
+
+          // If we found a new seat, use it as the starting point for consecutive selection
+          if (newSelectedSeat) {
+            // Clear previous selection and select consecutive seats from the new seat
+            selectConsecutiveSeats(newSelectedSeat);
+          } else {
+            // If no new seat was selected, maintain current selection
+            Object.keys(seatData.selectedSeats).forEach((seat) => {
+              myChart.dispatchAction({
+                type: "geoSelect",
+                name: seat,
+              });
+            });
+          }
+        } else {
+          // Create new selectedSeats object with additional information
+          const newSelectedSeats = {};
+          validSelectedNames.forEach((seat) => {
+            newSelectedSeats[seat] = {
+              tokenNumber: tokenSystem.seatTokens[seat],
+              selectionTimestamp: new Date().toISOString(),
+            };
+          });
+          seatData.selectedSeats = newSelectedSeats;
+
+          // Log seat selection via AJAX
+          makeAjaxCall("POST", "/api/seats/select", {
+            sessionToken: tokenSystem.sessionToken,
+            requestToken: tokenSystem.generateRequestToken(),
+            seats: validSelectedNames.map((seat) => ({
+              id: seat,
+              token: tokenSystem.seatTokens[seat],
+              price: getSeatPrice(seat),
+            })),
+            timestamp: new Date().toISOString(),
+            aircraft: getCurrentAircraftName(),
+            mapKey: currentMapKey
+          });
+        }
+
+        updateSelectedSeatsDisplay();
+        console.log("Selected seats:", seatData.selectedSeats);
+        processingNewSeatSelection = false;
+      }
+
+      function findNewlySelectedSeat(validSelectedNames) {
+        for (const seat of validSelectedNames) {
+          if (!seatData.selectedSeats[seat]) {
+            return seat;
+          }
+        }
+        return null;
+      }
+
+      function findDeselectedSeat(validSelectedNames) {
+        for (const seat of Object.keys(seatData.selectedSeats)) {
+          if (!validSelectedNames.includes(seat)) {
+            return seat;
+          }
+        }
+        return null;
+      }
+
+      function getSeatPrice(seatName) {
+        if (!seatName || !planeSettings) return 0;
+
+        // First check if there's an individual seat price defined
+        if (
+          planeSettings.seatPrices.seats &&
+          planeSettings.seatPrices.seats[seatName]
+        ) {
+          return planeSettings.seatPrices.seats[seatName];
+        }
+
+        // If no individual price, check if it's a window seat
+        const lastChar = seatName.slice(-1);
+        if (lastChar === "A" || lastChar === "G") {
+          return planeSettings.seatPrices.window;
+        }
+
+        return planeSettings.seatPrices.default;
+      }
+
+      function updatePricingInfo() {
+        if (!planeSettings) {
+          // If no plane settings, show default message
+          const pricingTitle = document.getElementById("pricing-title");
+          const pricingDetails = document.getElementById("pricing-details");
+
+          if (pricingTitle && pricingDetails) {
+            pricingTitle.textContent = "Seat Pricing";
+            pricingDetails.innerHTML =
+              "<p class='text-muted'>Please select a map to view pricing</p>";
+          }
+          return;
+        }
+
+        const pricingTitle = document.getElementById("pricing-title");
+        const pricingDetails = document.getElementById("pricing-details");
+
+        if (pricingTitle && pricingDetails) {
+          const aircraftName = planeSettings.name || currentMapKey;
+          pricingTitle.textContent = `${aircraftName} Pricing`;
+
+          // Create a list of all individual seat prices
+          let individualPrices = [];
+          if (planeSettings.seatPrices.seats) {
+            // Group seats by price
+            const priceGroups = {};
+
+            for (const [seat, price] of Object.entries(
+              planeSettings.seatPrices.seats
+            )) {
+              if (!priceGroups[price]) {
+                priceGroups[price] = [];
+              }
+              priceGroups[price].push(seat);
+            }
+
+            // Add each price group to the list
+            for (const [price, seats] of Object.entries(priceGroups)) {
+              // Determine if these are premium or blocked view seats
+              const isPremium =
+                parseInt(price) > planeSettings.seatPrices.window;
+              const isBlockedView =
+                parseInt(price) < planeSettings.seatPrices.default;
+
+              // Only show a few seats if there are many
+              const seatDisplay =
+                seats.length > 5
+                  ? `${seats.slice(0, 5).join(", ")}...`
+                  : seats.join(", ");
+
+              // Use the correct label based on the price
+              const seatTypeLabel = isBlockedView
+                ? "Blocked View Seats"
+                : isPremium
+                ? "Premium Seats"
+                : "Special Seats";
+
+              individualPrices.push(
+                `<p>${seatTypeLabel} (${seatDisplay}): ₹${price}</p>`
+              );
+            }
+          }
+
+          let pricingHTML = `
+            <p>Window Seats: ₹${planeSettings.seatPrices.window}</p>
+            <p>Aisle &amp; Middle Seats: ₹${
+              planeSettings.seatPrices.default
+            }</p>
+            ${individualPrices.join("")}
+          `;
+
+          pricingDetails.innerHTML = pricingHTML;
+        } else {
+          console.error("Pricing elements not found");
+        }
+      }
+
+      function selectConsecutiveSeats(startingSeat) {
+        clearAllSelectedSeats();
+
+        // Initialize selectedSeats as an object with the starting seat
+        seatData.selectedSeats = {
+          [startingSeat]: {
+            tokenNumber: tokenSystem.seatTokens[startingSeat],
+            selectionTimestamp: new Date().toISOString(),
+          },
+        };
+
+        seatData.lastSelectedSeat = startingSeat;
+
+        myChart.dispatchAction({ type: "geoSelect", name: startingSeat });
+
+        const seatParts = startingSeat.match(/(\d+)([A-G])/);
+        if (!seatParts) {
+          console.error("Invalid seat format:", startingSeat);
+          return;
+        }
+
+        let row = parseInt(seatParts[1]);
+        const col = seatParts[2];
+
+        const validCols =
+          row >= 11
+            ? planeSettings.validCols.extended
+            : planeSettings.validCols.general;
+
+        // Limit seats to select based on passenger count
+        let seatsToSelect =
+          Math.min(requiredSeatsCount, currentPassengerCount) - 1;
+        let colIndex = getColIndex(col, validCols);
+
+        // Track which seats need female passengers
+        const femaleRequiredSeats = [];
+        if (
+          genderConfig.genderBound &&
+          seatData.adjacentToFemaleReserved.includes(startingSeat)
+        ) {
+          femaleRequiredSeats.push(startingSeat);
+        }
+
+        // Count female passengers
+        let femalePassengerCount = 0;
+        for (const gender of Object.values(genderConfig.passengerGenders)) {
+          if (gender === "female") femalePassengerCount++;
+        }
+
+        function isSeatAvailable(seatName) {
+          // Basic availability check
+          const isBasicAvailable =
+            !seatData.reservedSeats.includes(seatName) &&
+            !seatData.femaleReservedSeats.includes(seatName) &&
+            !seatData.disabledSeats.includes(seatName) &&
+            !seatData.inProgressSeats.includes(seatName) &&
+            !seatData.selectedSeats[seatName];
+
+          if (!isBasicAvailable) return false;
+
+          // Gender restriction check
+          if (
+            genderConfig.genderBound &&
+            seatData.adjacentToFemaleReserved.includes(seatName)
+          ) {
+            // If we've already assigned all female passengers to seats, this seat can't be selected
+            if (femaleRequiredSeats.length >= femalePassengerCount) {
+              return false;
+            }
+
+            // This seat will need a female passenger
+            femaleRequiredSeats.push(seatName);
+          }
+
+          return true;
+        }
+
+        // Try to select seats to the right
+        let rightIndex = colIndex + 1;
+        while (seatsToSelect > 0 && rightIndex < validCols.length) {
+          const nextSeat = `${row}${validCols[rightIndex]}`;
+          if (isSeatAvailable(nextSeat)) {
+            seatData.selectedSeats[nextSeat] = {
+              tokenNumber: tokenSystem.seatTokens[nextSeat],
+              selectionTimestamp: new Date().toISOString(),
+            };
+            myChart.dispatchAction({ type: "geoSelect", name: nextSeat });
+            seatsToSelect--;
+          }
+          rightIndex++;
+        }
+
+        // Try to select seats to the left
+        let leftIndex = colIndex - 1;
+        while (seatsToSelect > 0 && leftIndex >= 0) {
+          const prevSeat = `${row}${validCols[leftIndex]}`;
+          if (isSeatAvailable(prevSeat)) {
+            seatData.selectedSeats[prevSeat] = {
+              tokenNumber: tokenSystem.seatTokens[prevSeat],
+              selectionTimestamp: new Date().toISOString(),
+            };
+            myChart.dispatchAction({ type: "geoSelect", name: prevSeat });
+            seatsToSelect--;
+          }
+          leftIndex--;
+        }
+
+        // If we still need more seats, look in other rows
+        if (seatsToSelect > 0) {
+          let checkedRows = new Set();
+          let nextRow = row + 1;
+
+          while (seatsToSelect > 0) {
+            if (planeSettings.rowSkippingRules[nextRow]) {
+              nextRow = planeSettings.rowSkippingRules[nextRow];
+            }
+
+            if (checkedRows.has(nextRow)) break;
+            checkedRows.add(nextRow);
+
+            const nextRowCols =
+              nextRow >= 11
+                ? planeSettings.validCols.extended
+                : planeSettings.validCols.general;
+
+            for (let i = 0; i < nextRowCols.length && seatsToSelect > 0; i++) {
+              const nextRowSeat = `${nextRow}${nextRowCols[i]}`;
+              if (isSeatAvailable(nextRowSeat)) {
+                seatData.selectedSeats[nextRowSeat] = {
+                  tokenNumber: tokenSystem.seatTokens[nextRowSeat],
+                  selectionTimestamp: new Date().toISOString(),
+                };
+                myChart.dispatchAction({
+                  type: "geoSelect",
+                  name: nextRowSeat,
+                });
+                seatsToSelect--;
+              }
+            }
+
+            nextRow++;
+            if (nextRow > 34) nextRow = 1;
+          }
+        }
+
+        // If we still need more seats, look in previous rows
+        if (seatsToSelect > 0) {
+          let checkedRows = new Set();
+          let prevRow = row - 1;
+          if (prevRow < 1) prevRow = 34;
+
+          while (seatsToSelect > 0) {
+            if (checkedRows.has(prevRow)) break;
+            checkedRows.add(prevRow);
+
+            const prevRowCols =
+              prevRow >= 11
+                ? planeSettings.validCols.extended
+                : planeSettings.validCols.general;
+
+            for (let i = 0; i < prevRowCols.length && seatsToSelect > 0; i++) {
+              const prevRowSeat = `${prevRow}${prevRowCols[i]}`;
+              if (isSeatAvailable(prevRowSeat)) {
+                seatData.selectedSeats[prevRowSeat] = {
+                  tokenNumber: tokenSystem.seatTokens[prevRowSeat],
+                  selectionTimestamp: new Date().toISOString(),
+                };
+                myChart.dispatchAction({
+                  type: "geoSelect",
+                  name: prevRowSeat,
+                });
+                seatsToSelect--;
+              }
+            }
+
+            prevRow--;
+            if (prevRow < 1) prevRow = 34;
+          }
+        }
+
+        if (seatsToSelect > 0) {
+          console.log(
+            `Could not find ${requiredSeatsCount} consecutive seats starting from ${startingSeat}`
+          );
+
+          // Show error if we couldn't find enough seats due to gender restrictions
+          if (genderConfig.genderBound && femaleRequiredSeats.length > 0) {
+            showError(
+              `Could not find ${requiredSeatsCount} consecutive seats that meet gender restrictions. Please adjust your passenger information or disable gender-based restrictions.`
+            );
+          }
+        }
+
+        // Log consecutive seat selection via AJAX
+        makeAjaxCall("POST", "/api/seats/selectConsecutive", {
+          sessionToken: tokenSystem.sessionToken,
+          requestToken: tokenSystem.generateRequestToken(),
+          startingSeat: startingSeat,
+          selectedSeats: Object.keys(seatData.selectedSeats).map((seat) => ({
+            id: seat,
+            token: seatData.selectedSeats[seat].tokenNumber,
+            price: getSeatPrice(seat),
+          })),
+          requiredCount: requiredSeatsCount,
+          actualCount: Object.keys(seatData.selectedSeats).length,
+          timestamp: new Date().toISOString(),
+          aircraft: getCurrentAircraftName(),
+          mapKey: currentMapKey
+        });
+      }
+
+      function getColIndex(col, validCols) {
+        return validCols.indexOf(col);
+      }
+
+      function updateSelectedSeatsDisplay() {
+        let cartTotal = 0;
+        const selectedSeatsArray = Object.keys(seatData.selectedSeats);
+
+        selectedSeatsArray.forEach((seatName) => {
+          const seatPrice = getSeatPrice(seatName);
+          cartTotal += seatPrice;
+        });
+
+        cartTotal = Math.max(cartTotal, 0);
+
+        if (requireConsecutiveSeats) {
+          const selectedSeatsList = document.getElementById(
+            "selected-seats-list"
+          );
+          const confirmButton = document.getElementById("confirm-selection");
+          const totalSeatsElement = document.getElementById("total-seats");
+          const seatsCountElement = document.getElementById("seats-count");
+          const cartValueElement = document.getElementById("cart-value");
+
+          // Sort seats for display
+          selectedSeatsArray.sort();
+
+          if (selectedSeatsArray.length === 0) {
+            selectedSeatsList.innerHTML =
+              '<p class="text-muted">No seats selected</p>';
+            confirmButton.disabled = true;
+            totalSeatsElement.classList.add("d-none");
+          } else {
+            let html = '<ul class="list-group">';
+
+            selectedSeatsArray.forEach((seatName, index) => {
+              const seatPrice = getSeatPrice(seatName);
+              const seatInfo = seatData.selectedSeats[seatName];
+              const seatToken = seatInfo.tokenNumber || "N/A";
+              const timestamp = seatInfo.selectionTimestamp || "N/A";
+
+              // Add gender badge for seats adjacent to female reserved
+              const isAdjacentToFemaleReserved =
+                seatData.adjacentToFemaleReserved.includes(seatName);
+              const genderBadge = isAdjacentToFemaleReserved
+                ? '<span class="gender-badge female">Female Only</span>'
+                : "";
+
+              html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <div>Seat ${seatName} (₹${seatPrice}) ${genderBadge}</div>
+                  <small class="text-muted">Token: ${seatToken}</small>
+                  <small class="text-muted d-block">Selected at: ${new Date(
+                    timestamp
+                  ).toLocaleTimeString()}</small>
+                </div>
+                <button class="btn btn-sm btn-danger remove-seat" data-seat="${seatName}">Remove</button>
+            </li>`;
+            });
+
+            html += "</ul>";
+            selectedSeatsList.innerHTML = html;
+            confirmButton.disabled = false;
+
+            seatsCountElement.textContent = selectedSeatsArray.length;
+            totalSeatsElement.classList.remove("d-none");
+
+            document.querySelectorAll(".remove-seat").forEach((button) => {
+              button.addEventListener("click", function () {
+                const seatToRemove = this.getAttribute("data-seat");
+                removeSeat(seatToRemove);
+              });
+            });
+          }
+
+          cartValueElement.textContent = `₹${cartTotal}`;
+          confirmButton.textContent = `Confirm Selection (₹${cartTotal})`;
+        } else {
+          const selectedSeatsList = document.getElementById(
+            "selected-seats-list"
+          );
+          const confirmButton = document.getElementById("confirm-selection");
+          const totalSeatsElement = document.getElementById("total-seats");
+          const seatsCountElement = document.getElementById("seats-count");
+          const cartValueElement = document.getElementById("cart-value");
+
+          // Sort seats for display
+          selectedSeatsArray.sort();
+
+          if (selectedSeatsArray.length === 0) {
+            selectedSeatsList.innerHTML =
+              '<p class="text-muted">No seats selected</p>';
+            confirmButton.disabled = true;
+            totalSeatsElement.classList.add("d-none");
+          } else {
+            let html = '<ul class="list-group">';
+
+            selectedSeatsArray.forEach((seatName) => {
+              const seatPrice = getSeatPrice(seatName);
+              const seatInfo = seatData.selectedSeats[seatName];
+              const seatToken = seatInfo.tokenNumber || "N/A";
+              const timestamp = seatInfo.selectionTimestamp || "N/A";
+
+              // Add gender badge for seats adjacent to female reserved
+              const isAdjacentToFemaleReserved =
+                seatData.adjacentToFemaleReserved.includes(seatName);
+              const genderBadge = isAdjacentToFemaleReserved
+                ? '<span class="gender-badge female">Female Only</span>'
+                : "";
+
+              html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <div>Seat ${seatName} (₹${seatPrice}) ${genderBadge}</div>
+                      <small class="text-muted">Token: ${seatToken}</small>
+                      <small class="text-muted d-block">Selected at: ${new Date(
+                        timestamp
+                      ).toLocaleTimeString()}</small>
+                    </div>
+                    <button class="btn btn-sm btn-danger remove-seat" data-seat="${seatName}">
+                        Remove
+                    </button>
+                </li>`;
+            });
+
+            html += "</ul>";
+            selectedSeatsList.innerHTML = html;
+            confirmButton.disabled = false;
+
+            seatsCountElement.textContent = selectedSeatsArray.length;
+            totalSeatsElement.classList.remove("d-none");
+
+            document.querySelectorAll(".remove-seat").forEach((button) => {
+              button.addEventListener("click", function () {
+                const seatToRemove = this.getAttribute("data-seat");
+                removeSeat(seatToRemove);
+              });
+            });
+          }
+
+          cartValueElement.textContent = `₹${cartTotal}`;
+          confirmButton.textContent = `Confirm Selection (₹${cartTotal})`;
+        }
+      }
+
+      function removeSeat(seatName) {
+        if (requireConsecutiveSeats) {
+          // Remove all selected seats since consecutive selection is enabled
+          clearAllSelectedSeats();
+          updateSelectedSeatsDisplay();
+        } else {
+          if (seatData.selectedSeats[seatName]) {
+            delete seatData.selectedSeats[seatName];
+          }
+
+          myChart.dispatchAction({
+            type: "geoUnSelect",
+            name: seatName,
+          });
+
+          if (
+            requireConsecutiveSeats &&
+            seatName === seatData.lastSelectedSeat &&
+            Object.keys(seatData.selectedSeats).length > 0
+          ) {
+            const newStartingSeat = Object.keys(seatData.selectedSeats)[0];
+            clearAllSelectedSeats();
+            seatData.lastSelectedSeat = newStartingSeat;
+            selectConsecutiveSeats(newStartingSeat);
+          } else {
+            updateSelectedSeatsDisplay();
+          }
+
+          // Log seat removal via AJAX
+          makeAjaxCall("POST", "/api/seats/remove", {
+            sessionToken: tokenSystem.sessionToken,
+            requestToken: tokenSystem.generateRequestToken(),
+            seat: seatName,
+            token: tokenSystem.seatTokens[seatName],
+            timestamp: new Date().toISOString(),
+            aircraft: getCurrentAircraftName(),
+            mapKey: currentMapKey
+          });
+        }
+      }
+
+      // Function to display error messages
+      function showError(message) {
+        const errorContainer = document.getElementById("error-container");
+        errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
+        errorContainer.style.display = "block";
+
+        setTimeout(() => {
+          errorContainer.style.display = "none";
+        }, 5000);
+      }
+
+      // Function to show gender prompt modal
+      function showGenderPrompt() {
+        const modal = document.getElementById("genderPromptModal");
+        const modalContent = document.getElementById(
+          "genderPromptPassengerDetails"
+        );
+
+        // Clear previous content
+        modalContent.innerHTML = "";
+
+        // Get current passenger count
+        const passengerCount = parseInt(
+          document.getElementById("passengerCount").value
+        );
+
+        // Generate passenger forms for the modal
+        for (let i = 1; i <= passengerCount; i++) {
+          const gender = genderConfig.passengerGenders[i] || "male";
+
+          const passengerCard = document.createElement("div");
+          passengerCard.className = "passenger-card";
+          passengerCard.setAttribute("data-passenger-id", i);
+
+          passengerCard.innerHTML = `
+            <h6>Passenger ${i}</h6>
+            <div class="mb-2">
+              <label class="form-label">Gender</label>
+              <div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="modal-gender-${i}" id="modal-male-${i}" value="male" ${
+            gender === "male" ? "checked" : ""
+          }>
+                  <label class="form-check-label" for="modal-male-${i}">Male</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="modal-gender-${i}" id="modal-female-${i}" value="female" ${
+            gender === "female" ? "checked" : ""
+          }>
+                  <label class="form-check-label" for="modal-female-${i}">Female</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="modal-gender-${i}" id="modal-other-${i}" value="other" ${
+            gender === "other" ? "checked" : ""
+          }>
+                  <label class="form-check-label" for="modal-other-${i}">Other</label>
+                </div>
+              </div>
+            </div>
+          `;
+
+          modalContent.appendChild(passengerCard);
+        }
+
+        // Show the modal
+        modal.style.display = "flex";
+      }
+
+      // Close gender prompt modal
+      document
+        .getElementById("closeGenderPrompt")
+        .addEventListener("click", function () {
+          document.getElementById("genderPromptModal").style.display = "none";
+        });
+
+      // Confirm gender selections from modal
+      document
+        .getElementById("confirmGenderPrompt")
+        .addEventListener("click", function () {
+          const modal = document.getElementById("genderPromptModal");
+          const passengerCount = parseInt(
+            document.getElementById("passengerCount").value
+          );
+
+          // Update passenger genders from modal
+          for (let i = 1; i <= passengerCount; i++) {
+            const genderRadios = document.getElementsByName(
+              `modal-gender-${i}`
+            );
+            for (const radio of genderRadios) {
+              if (radio.checked) {
+                // Update both the modal and main form
+                genderConfig.passengerGenders[i] = radio.value;
+
+                // Update the main form radio buttons
+                const mainFormRadios = document.getElementsByName(
+                  `gender-${i}`
+                );
+                for (const mainRadio of mainFormRadios) {
+                  if (mainRadio.value === radio.value) {
+                    mainRadio.checked = true;
+                  }
+                }
+
+                break;
+              }
+            }
+          }
+
+          // Close the modal
+          modal.style.display = "none";
+
+          console.log(
+            "Updated passenger genders:",
+            genderConfig.passengerGenders
+          );
+
+          // Log gender update from modal via AJAX
+          makeAjaxCall("POST", "/api/passengers/updateGenders", {
+            sessionToken: tokenSystem.sessionToken,
+            requestToken: tokenSystem.generateRequestToken(),
+            passengerGenders: genderConfig.passengerGenders,
+            timestamp: new Date().toISOString(),
+            aircraft: getCurrentAircraftName(),
+            mapKey: currentMapKey
+          });
+        });
+
+      // Function to validate tokens before submitting
+      function validateTokens(selectedSeats) {
+        const selectedSeatsArray = Object.keys(selectedSeats);
+
+        // Check session token
+        if (!tokenSystem.sessionToken) {
+          showError("Session has expired. Please reload the page.");
+          return false;
+        }
+
+        // Check seat tokens
+        for (const seat of selectedSeatsArray) {
+          if (!selectedSeats[seat].tokenNumber) {
+            showError(
+              "Invalid seat selection detected. Please reload the page."
+            );
+            return false;
+          }
+        }
+
+        // Validate gender restrictions
+        if (genderConfig.genderBound) {
+          // Count female passengers
+          let femalePassengerCount = 0;
+          for (const gender of Object.values(genderConfig.passengerGenders)) {
+            if (gender === "female") femalePassengerCount++;
+          }
+
+          // Count seats adjacent to female reserved
+          const adjacentToFemaleSelectedSeats = selectedSeatsArray.filter(
+            (seat) => seatData.adjacentToFemaleReserved.includes(seat)
+          );
+
+          if (adjacentToFemaleSelectedSeats.length > femalePassengerCount) {
+            showError(
+              `You have selected ${adjacentToFemaleSelectedSeats.length} seats adjacent to female reserved seats but only have ${femalePassengerCount} female passengers.`
+            );
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      // Function to prepare payload with tokens
+      function preparePayload(selectedSeats) {
+        // Assign seats to passengers based on gender restrictions
+        const seatAssignments = {};
+        const selectedSeatsArray = Object.keys(selectedSeats);
+
+        // First, assign seats adjacent to female reserved to female passengers
+        const femalePassengers = [];
+        const otherPassengers = [];
+
+        for (const [id, gender] of Object.entries(
+          genderConfig.passengerGenders
+        )) {
+          if (gender === "female") {
+            femalePassengers.push(id);
+          } else {
+            otherPassengers.push(id);
+          }
+        }
+
+        // Assign seats adjacent to female reserved to female passengers
+        let femalePassengerIndex = 0;
+        for (const seat of selectedSeatsArray) {
+          if (seatData.adjacentToFemaleReserved.includes(seat)) {
+            if (femalePassengerIndex < femalePassengers.length) {
+              seatAssignments[seat] = {
+                passengerId: femalePassengers[femalePassengerIndex],
+                gender: "female",
+              };
+              femalePassengerIndex++;
+            }
+          }
+        }
+
+        // Assign remaining seats to remaining passengers
+        const remainingSeats = selectedSeatsArray.filter(
+          (seat) => !seatAssignments[seat]
+        );
+        const remainingFemalePassengers =
+          femalePassengers.slice(femalePassengerIndex);
+        const allRemainingPassengers = [
+          ...remainingFemalePassengers,
+          ...otherPassengers,
+        ];
+
+        let passengerIndex = 0;
+        for (const seat of remainingSeats) {
+          if (passengerIndex < allRemainingPassengers.length) {
+            const passengerId = allRemainingPassengers[passengerIndex];
+            seatAssignments[seat] = {
+              passengerId: passengerId,
+              gender: genderConfig.passengerGenders[passengerId],
+            };
+            passengerIndex++;
+          }
+        }
+
+        const payload = {
+          sessionToken: tokenSystem.sessionToken,
+          requestToken: tokenSystem.generateRequestToken(),
+          seats: selectedSeatsArray.map((seat) => ({
+            id: seat,
+            token: selectedSeats[seat].tokenNumber,
+            price: getSeatPrice(seat),
+            passenger: seatAssignments[seat] || null,
+            selectionTimestamp: selectedSeats[seat].selectionTimestamp,
+          })),
+          totalPrice: selectedSeatsArray.reduce(
+            (total, seat) => total + getSeatPrice(seat),
+            0
+          ),
+          genderRestrictionEnabled: genderConfig.genderBound,
+          aircraft: getCurrentAircraftName(),
+          mapKey: currentMapKey
+        };
+
+        return payload;
+      }
+
+      // Function to display token information in the modal
+      function displayTokenInfo(payload) {
+        const modalBody = document.getElementById("token-modal-body");
+
+        let seatsList = "";
+        payload.seats.forEach((seat) => {
+          const passengerInfo = seat.passenger
+            ? `Passenger ${seat.passenger.passengerId} (${seat.passenger.gender})`
+            : "Unassigned";
+
+          const isAdjacentToFemaleReserved =
+            seatData.adjacentToFemaleReserved.includes(seat.id);
+          const seatTypeInfo = isAdjacentToFemaleReserved
+            ? `<span class="badge bg-danger">Female Only</span>`
+            : "";
+
+          const timestamp = seat.selectionTimestamp
+            ? new Date(seat.selectionTimestamp).toLocaleString()
+            : "N/A";
+
+          seatsList += `
+            <tr>
+              <td>${seat.id} ${seatTypeInfo}</td>
+              <td>₹${seat.price}</td>
+              <td>${seat.token}</td>
+              <td>${passengerInfo}</td>
+              <td>${timestamp}</td>
+            </tr>
+          `;
+        });
+
+        const content = `
+          <div class="mb-3">
+            <h6>Session Token:</h6>
+            <div class="token-display">${payload.sessionToken}</div>
+          </div>
+          
+          <div class="mb-3">
+            <h6>Request Token:</h6>
+            <div class="token-display">${payload.requestToken}</div>
+          </div>
+          
+          <div class="mb-3">
+            <h6>Aircraft:</h6>
+            <div class="token-display">${payload.aircraft}</div>
+          </div>
+          
+          <div class="mb-3">
+            <h6>Selected Seats:</h6>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Seat</th>
+                  <th>Price</th>
+                  <th>Seat Token</th>
+                  <th>Assigned To</th>
+                  <th>Selection Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${seatsList}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="4">Total Price:</th>
+                  <td>₹${payload.totalPrice}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            These tokens will be sent to the server to verify the integrity of your seat selection.
+          </div>
+          
+          <div class="alert ${
+            payload.genderRestrictionEnabled ? "alert-success" : "alert-warning"
+          }">
+            <i class="fas fa-${
+              payload.genderRestrictionEnabled ? "check" : "exclamation"
+            }-circle me-2"></i>
+            Gender-based seat restrictions are currently ${
+              payload.genderRestrictionEnabled ? "enabled" : "disabled"
+            }.
+          </div>
+        `;
+
+        modalBody.innerHTML = content;
+
+        // Show the modal
+        const tokenModal = new bootstrap.Modal(
+          document.getElementById("tokenModal")
+        );
+        tokenModal.show();
+      }
+
+      // Function to make AJAX calls with token inclusion
+      function makeAjaxCall(method, endpoint, payload) {
+        // Ensure payload has session token
+        if (!payload.sessionToken) {
+          payload.sessionToken = tokenSystem.sessionToken;
+        }
+
+        // Ensure payload has request token if not already present
+        if (!payload.requestToken) {
+          payload.requestToken = tokenSystem.generateRequestToken();
+        }
+
+        // Ensure payload has aircraft information if available
+        if (!payload.aircraft && currentMapKey) {
+          payload.aircraft = getCurrentAircraftName();
+          payload.mapKey = currentMapKey;
+        }
+
+        console.log(`Making ${method} request to ${endpoint}`, payload);
+
+        // Log the request in the UI
+        ajaxLogger.addLog(method, endpoint, payload);
+
+        // In a real implementation, this would be an actual AJAX call
+        // For this demo, we'll simulate the AJAX call
+        return new Promise((resolve, reject) => {
+          setTimeout(() => {
+            // Simulate server validation of tokens
+            const isSessionTokenValid = tokenSystem.validateSessionToken(
+              payload.sessionToken
+            );
+
+            if (isSessionTokenValid) {
+              const response = {
+                success: true,
+                message: "Request processed successfully",
+                timestamp: new Date().toISOString(),
+                requestToken: payload.requestToken,
+                aircraft: payload.aircraft
+              };
+
+              // Log the successful response
+              ajaxLogger.addLog(method, endpoint, payload, response);
+
+              resolve(response);
+            } else {
+              const errorResponse = {
+                success: false,
+                message: "Invalid session token",
+                error: "INVALID_TOKEN",
+              };
+
+              // Log the error response
+              ajaxLogger.addLog(method, endpoint, payload, errorResponse, true);
+
+              reject(errorResponse);
+            }
+          }, 300); // Simulate network delay
+        });
+      }
+
+      // Mock AJAX call to submit seat selection
+      function submitSeatSelection(payload) {
+        console.log("Submitting seat selection with payload:", payload);
+
+        // Make the AJAX call with the payload
+        return makeAjaxCall("POST", "/api/seats/confirm", payload);
+      }
+
+      document
+        .getElementById("confirm-selection")
+        .addEventListener("click", function () {
+          if (Object.keys(seatData.selectedSeats).length === 0) {
+            showError("Please select at least one seat.");
+            return;
+          }
+
+          // Check if selected seats exceed passenger count
+          if (
+            Object.keys(seatData.selectedSeats).length > currentPassengerCount
+          ) {
+            showError(
+              `You can only select up to ${currentPassengerCount} seats based on your passenger count.`
+            );
+            return;
+          }
+
+          // Validate tokens before submitting
+          if (!validateTokens(seatData.selectedSeats)) {
+            return;
+          }
+
+          // Prepare payload with tokens
+          const payload = preparePayload(seatData.selectedSeats);
+
+          // Display token information in the modal
+          displayTokenInfo(payload);
+
+          // Set up the proceed button to handle the actual submission
+          document.getElementById("proceed-button").onclick = function () {
+            // Show loading state
+            const proceedButton = this;
+            const originalText = proceedButton.textContent;
+            proceedButton.disabled = true;
+            proceedButton.innerHTML =
+              '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+
+            // Submit seat selection
+            submitSeatSelection(payload)
+              .then((response) => {
+                // Close the modal
+                bootstrap.Modal.getInstance(
+                  document.getElementById("tokenModal")
+                ).hide();
+
+                // Show success message
+                alert(
+                  `Seat selection confirmed!\nSelected seats: ${Object.keys(
+                    seatData.selectedSeats
+                  ).join(", ")}\nTotal amount: ₹${
+                    payload.totalPrice
+                  }\nAircraft: ${payload.aircraft}\nSession Token: ${
+                    payload.sessionToken
+                  }\nRequest Token: ${payload.requestToken}`
+                );
+                console.log("Server response:", response);
+              })
+              .catch((error) => {
+                showError(
+                  error.message ||
+                    "An error occurred while processing your request."
+                );
+                console.error("Error submitting seat selection:", error);
+              })
+              .finally(() => {
+                // Restore button state
+                proceedButton.disabled = false;
+                proceedButton.textContent = originalText;
+              });
+          };
+        });
+
+      // Clear AJAX logs button
+      document
+        .getElementById("clear-logs")
+        .addEventListener("click", function () {
+          ajaxLogger.clearLogs();
+        });
+
+      window.addEventListener("resize", function () {
+        if (myChart) {
+          myChart.resize();
+        }
+      });
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const seatInput = document.getElementById("numberOfSeats");
+
+        seatInput.addEventListener("keydown", function (event) {
+          event.preventDefault();
+        });
+
+        seatInput.addEventListener("change", function () {
+          let value = parseInt(seatInput.value);
+          if (value < 2) {
+            seatInput.value = 2;
+            alert("Minimum limit reached: You must select at least 2 seats.");
+          }
+
+          // Ensure number of seats doesn't exceed passenger count
+          const passengerCount = parseInt(
+            document.getElementById("passengerCount").value
+          );
+          if (value > passengerCount) {
+            seatInput.value = passengerCount;
+            value = passengerCount;
+            showError(
+              `Number of seats cannot exceed the number of passengers (${passengerCount}).`
+            );
+          }
+
+          requiredSeatsCount = value;
+          clearAllSelectedSeats();
+        });
+
+        // Initialize passenger genders
+        updatePassengerGender(1, "male");
+      });
+
+      document
+        .getElementById("consecutiveSeatsToggle")
+        .addEventListener("change", function () {
+          requireConsecutiveSeats = this.checked;
+          const seatsNumberContainer = document.getElementById(
+            "seatsNumberContainer"
+          );
+          const clearMessage = document.getElementById("clear-message");
+
+          if (requireConsecutiveSeats) {
+            // Set number of seats to match passenger count
+            const passengerCount = parseInt(
+              document.getElementById("passengerCount").value
+            );
+            document.getElementById("numberOfSeats").value = passengerCount;
+            requiredSeatsCount = passengerCount;
+
+            seatsNumberContainer.classList.remove("d-none");
+            clearMessage.classList.remove("d-none"); // Show the message
+
+            if (Object.keys(seatData.selectedSeats).length > 0) {
+              clearAllSelectedSeats();
+            }
+          } else {
+            seatsNumberContainer.classList.add("d-none");
+            clearMessage.classList.add("d-none");
+            clearAllSelectedSeats();
+          }
+        });
+    </script>
+  </body>
+</html>
